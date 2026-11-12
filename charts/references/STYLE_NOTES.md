@@ -1,25 +1,68 @@
-# Reference pack stats
+# Reference chart style notes
 
-**21** packs. Standing rules: `charts/tools/CHARTING_STANDARD.md` (all future charts).
+Auto-derived from Harmonix-style RB `notes.mid` packs in this folder.
+Use as **guides**, not gospel. Prefer consistent playable charts that feel like the real song.
 
-- **AC/DC – Let There Be Rock**: tempo≈185.0, hits=3449, first_hit=5.03s, rolls=0, Y=1611c/0t B=0c/1t G=175c/0t
-- **AFI – Girl's Not Grey**: tempo≈124.0, hits=1557, first_hit=3.15s, rolls=8, Y=230c/9t B=211c/2t G=111c/0t
-- **Alanis Morissette – You Oughta Know**: tempo≈103.5, hits=1678, first_hit=4.64s, rolls=5, Y=395c/98t B=298c/2t G=4c/0t
-- **Avenged Sevenfold – Almost Easy**: tempo≈175.0, hits=2009, first_hit=5.49s, rolls=0, Y=132c/16t B=180c/19t G=395c/9t
-- **Fleetwood Mac – Go Your Own Way**: tempo≈136.0, hits=1994, first_hit=12.35s, rolls=9, Y=568c/54t B=10c/123t G=33c/300t
-- **Foo Fighters – Everlong**: tempo≈157.5, hits=2436, first_hit=15.24s, rolls=88, Y=267c/16t B=43c/50t G=164c/4t
-- **Lit – My Own Worst Enemy**: tempo≈103.1, hits=887, first_hit=13.09s, rolls=5, Y=64c/6t B=210c/1t G=132c/0t
-- **Metallica – Battery**: tempo≈73.0, hits=3071, first_hit=42.74s, rolls=6, Y=408c/49t B=152c/57t G=758c/0t
-- **Modest Mouse – Float On**: tempo≈100.9, hits=1229, first_hit=5.65s, rolls=0, Y=549c/0t B=144c/0t G=14c/0t
-- **Blink-182 – Adam's Song**: tempo≈135.0, hits=1648, first_hit=10.56s, rolls=18, Y=26c/243t B=20c/284t G=254c/28t
-- **Blue Öyster Cult – Godzilla**: tempo≈91.0, hits=1397, first_hit=5.27s, rolls=9, Y=363c/3t B=191c/19t G=28c/13t
-- **Coheed and Cambria – The Running Free**: tempo≈170.0, hits=1689, first_hit=29.29s, rolls=5, Y=356c/3t B=110c/4t G=247c/0t
-- **The Jimi Hendrix Experience – Little Wing**: tempo≈68.0, hits=822, first_hit=6.18s, rolls=0, Y=208c/0t B=220c/0t G=128c/60t
-- **The Killers – Mr. Brightside**: tempo≈148.35, hits=1780, first_hit=11.32s, rolls=87, Y=128c/7t B=244c/0t G=51c/44t
-- **Pearl Jam – Jeremy**: tempo≈94.0, hits=1548, first_hit=15.32s, rolls=5, Y=194c/0t B=383c/14t G=94c/2t
-- **Pearl Jam – Even Flow**: tempo≈101.0, hits=1968, first_hit=4.75s, rolls=8, Y=547c/0t B=354c/2t G=84c/0t
-- **Lamb of God – Laid to Rest**: tempo≈141.0, hits=2224, first_hit=2.7s, rolls=0, Y=53c/11t B=148c/42t G=298c/24t
-- **Boston – More Than A Feeling**: tempo≈106.0, hits=1943, first_hit=4.53s, rolls=0, Y=385c/0t B=480c/0t G=504c/95t
-- **Metallica – ...And Justice for All**: tempo≈97.0, hits=3960, first_hit=33.4s, rolls=10, Y=729c/98t B=159c/121t G=896c/7t
-- **Arctic Monkeys – R U Mine?**: tempo≈96.98, hits=1101, first_hit=4.95s, rolls=8, Y=313c/0t B=70c/0t G=133c/0t
-- **Billy Joel – Movin' Out (Anthony's Song)**: tempo≈132.0, hits=1584, first_hit=3.64s, rolls=0, Y=385c/0t B=160c/0t G=390c/0t
+Library size: **24** charts.
+
+## Library norms
+
+- First drum hit: median **5.6s** (range 2.7–42.7)
+- Hit count: median **1734** (range 822–3960)
+- Snare-roll phrases (≥4 16ths): median **5** (range 0–88)
+- Y/B/G share (median): Y **41%**, B **33%**, G **31%**
+- Tom ratio among YBG: median **6%**
+
+## Outliers / do-not-copy blindly
+
+| Chart | Why it stands out | Takeaway |
+|---|---|---|
+| AC/DC - Let There Be Rock | no blue cymbals; yellow-heavy (90% YBG); dense but 0 detected rolls | treat as edge case |
+| Avenged Sevenfold - Almost Easy | dense but 0 detected rolls | treat as edge case |
+| Blink-182 - Adam's Song | tom-heavy (65%) | treat as edge case |
+| Coheed and Cambria - The Running Free | late kit entry (29.29s) | treat as edge case |
+| Fleetwood Mac - Go Your Own Way | tom-heavy (44%) | treat as edge case |
+| Fleetwood Mac - Rhiannon | no blue cymbals; tom-heavy (95%); very long tom-marker sustain (254.9s) — likely charting quirk; dense but 0 detected rolls | treat as edge case |
+| Foo Fighters - Everlong | roll-dense (88) | treat as edge case |
+| Lamb of God - Laid to Rest | dense but 0 detected rolls | treat as edge case |
+| Metallica - ...And Justice for All | late kit entry (33.4s) | treat as edge case |
+| Metallica - Battery | late kit entry (42.74s) | treat as edge case |
+| The Killers - Mr. Brightside | roll-dense (87) | treat as edge case |
+
+## Per-chart snapshot
+
+| Artist | Song | BPM | Hits | First hit (s) | Rolls | Y cym/tom | B cym/tom | G cym/tom |
+|---|---|---:|---:|---:|---:|---|---|---|
+| AC/DC | Let There Be Rock | 185.0 | 3449 | 5.03 | 0 | 1611/0 | 0/1 | 175/0 |
+| AFI | Girl's Not Grey | 124.0 | 1557 | 3.15 | 8 | 230/9 | 211/2 | 111/0 |
+| Alanis Morissette | You Oughta Know | 103.5 | 1678 | 4.64 | 5 | 395/98 | 298/2 | 4/0 |
+| Arctic Monkeys | R U Mine? | 96.98 | 1101 | 4.95 | 8 | 313/0 | 70/0 | 133/0 |
+| Avenged Sevenfold | Almost Easy | 175.0 | 2009 | 5.49 | 0 | 132/16 | 180/19 | 395/9 |
+| Avenged Sevenfold | Unholy Confessions | 97.5 | 2134 | 4.92 | 5 | 87/15 | 483/16 | 325/10 |
+| Billy Joel | Movin' Out (Anthony's Song) | 132.0 | 1584 | 3.64 | 0 | 385/0 | 160/0 | 390/0 |
+| Blink-182 | Adam's Song | 135.0 | 1648 | 10.56 | 18 | 26/243 | 20/284 | 254/28 |
+| Blue Öyster Cult | Godzilla | 91.0 | 1397 | 5.27 | 9 | 363/3 | 191/19 | 28/13 |
+| Boston | More Than A Feeling | 106.0 | 1943 | 4.53 | 0 | 385/0 | 480/0 | 504/95 |
+| Coheed and Cambria | The Running Free | 170.0 | 1689 | 29.29 | 5 | 356/3 | 110/4 | 247/0 |
+| Fleetwood Mac | Go Your Own Way | 136.0 | 1994 | 12.35 | 9 | 568/54 | 10/123 | 33/300 |
+| Fleetwood Mac | Rhiannon | 124.31 | 2246 | 11.28 | 0 | 0/503 | 0/719 | 67/0 |
+| Foo Fighters | Everlong | 157.5 | 2436 | 15.24 | 88 | 267/16 | 43/50 | 164/4 |
+| Incubus | Drive drums | 92.0 | 1404 | 5.22 | 0 | 405/0 | 88/0 | 216/18 |
+| Lamb of God | Laid to Rest | 141.0 | 2224 | 2.7 | 0 | 53/11 | 148/42 | 298/24 |
+| Lit | My Own Worst Enemy | 103.1 | 887 | 13.09 | 5 | 64/6 | 210/1 | 132/0 |
+| Metallica | ...And Justice for All | 97.0 | 3960 | 33.4 | 10 | 729/98 | 159/121 | 896/7 |
+| Metallica | Battery | 73.0 | 3071 | 42.74 | 6 | 408/49 | 152/57 | 758/0 |
+| Modest Mouse | Float On | 100.9 | 1229 | 5.65 | 0 | 549/0 | 144/0 | 14/0 |
+| Pearl Jam | Even Flow | 101.0 | 1968 | 4.75 | 8 | 547/0 | 354/2 | 84/0 |
+| Pearl Jam | Jeremy | 94.0 | 1548 | 15.32 | 5 | 194/0 | 383/14 | 94/2 |
+| The Jimi Hendrix Experience | Little Wing | 68.0 | 822 | 6.18 | 0 | 208/0 | 220/0 | 128/60 |
+| The Killers | Mr. Brightside | 148.35 | 1780 | 11.32 | 87 | 128/7 | 244/0 | 51/44 |
+
+## Patterns that *do* make sense (copy these)
+
+1. **Late kit entry is fine** when the song has a non-kit / guitar intro (Battery, AJFA, Running Free).
+2. **Write rolls out hit-for-hit** when the recording has them (Everlong, Brightside).
+3. **Default YBG are cymbals**; tom markers only during actual tom passages (median tom ratio ~6%).
+4. **Blue ride / crash contrast** is common but not required — some charts stay yellow-hat heavy.
+5. **Lane color is stylistic**, not a hard law — prioritize matching the real kit sound over matching a ref's color bias.
+

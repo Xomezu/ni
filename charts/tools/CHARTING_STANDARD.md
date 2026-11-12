@@ -45,4 +45,11 @@ do **not** copy outliers blindly. Goal: charts that feel like playing the real s
 7. Ship zip only after sync check
 
 ## Reference library
-See `charts/references/STYLE_NOTES.md` for per-pack stats from ingested Harmonix/community charts.
+See `charts/references/STYLE_NOTES.md` for per-chart stats from ingested Harmonix/community packs.
+
+**Known outliers (do not copy blindly):**
+- **Late kit entry** (Battery ~43s, AJFA ~33s, Running Free ~29s) — fine when the song truly waits; not a reason to delay kit that starts earlier.
+- **Yellow-only / no blue cym** (Let There Be Rock) — hats-dominated mapping; still use blue for ride/contrast when the kit has it.
+- **Extreme tom-marker sustains** (Rhiannon ~95% tom ratio) — likely a charting quirk; keep tom ratio near the library median (~6%) unless the song is actually tom-heavy.
+- **Roll density swings** (Everlong/Brightside ~87–88 roll phrases vs many dense charts with 0) — write rolls when the recording has them; absence in a ref is not permission to omit them.
+- **Lane color bias varies song-to-song** — match the real kit first; refs are habit checks, not note-for-note laws.

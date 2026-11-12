@@ -1,14 +1,24 @@
-# Wounded — Clone Hero Pro Drums (v2)
+# Wounded — Clone Hero Pro Drums (v3)
 
-## Fix vs v1
-- **No notes before ~1:28** (early electronic snare/hats/verses removed)
-- Chart starts at the **Bridge** full-kit entrance (“Wounded”)
-- Offset **94.415s** locked to that entrance (~1:34)
+Third Eye Blind — **hit-for-hit** from Chris Rippin’s drum tab (82 BPM).
 
-## Sync
-- BPM 82
-- First hit ≈ **94.4s**
-- Covers Bridge → Choruses → Solo (outro trimmed to audio length)
+## What changed vs v2
+- **Every kit stroke** from the tab is written (rolls, fills, flams, backbeats) — no thinning
+- Chart begins on the **Bridge lead-in snare roll** (~1:26), not the Bridge downbeat (~1:28)
+- Digitized intro / verse electronic HH+ES grooves omitted; acoustic kit sections kept
+- Offset **85.590s** (Bridge crash ≈ **87.8s** / 1:28)
+
+## Mapping
+| Tab | Pro lane |
+|---|---|
+| BD | Kick |
+| SD / lead-in rolls | Red snare |
+| HH | Yellow cymbal |
+| RC / CR | Blue cymbal |
+| CC | Green cymbal |
+| ST / LT / FT | Y / B / G toms |
 
 ## Install
-Copy into Clone Hero `Songs` → rescan → Pro Drums.
+Copy folder into Clone Hero `Songs` → rescan → Pro Drums.
+
+Source tab: `chris_rippin_drum_tab.txt` (muzikum / Chris Rippin).

@@ -1,12 +1,14 @@
-# Wounded — Clone Hero Pro Drums
+# Wounded — Clone Hero Pro Drums (v2)
 
-Third Eye Blind — Chris Rippin drum tab, audio-synced.
+## Fix vs v1
+- **No notes before ~1:28** (early electronic snare/hats/verses removed)
+- Chart starts at the **Bridge** full-kit entrance (“Wounded”)
+- Offset **94.415s** locked to that entrance (~1:34)
 
-## Sync (verified)
-- BPM **82.05**
-- Offset **5.220s**
-- Mid-song snare/kick alignment: ~**9–11 ms** median error, ~**88%** within 60ms
-- Quiet intro before drums; chart trimmed to audio length (291s)
+## Sync
+- BPM 82
+- First hit ≈ **94.4s**
+- Covers Bridge → Choruses → Solo (outro trimmed to audio length)
 
 ## Install
-Copy `Wounded` into Clone Hero `Songs` → rescan → Pro Drums.
+Copy into Clone Hero `Songs` → rescan → Pro Drums.

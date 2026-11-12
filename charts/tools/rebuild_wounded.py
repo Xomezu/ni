@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Rebuild Wounded Pro drums chart with an audio-locked section timeline.
+Rebuild Wounded — full song from the start.
 
-The Chris Rippin tab is hit-for-hit within sections, but its Chorus repeats
-and mid-song electronic stretch are longer than the album cut. This script
-keeps kit strokes 1:1 from the tab while placing/shortening sections to the
-measured audio anchors.
+- Keeps the beginning: electronic intro/verse percussion is charted (HH/ES/BD).
+- Full acoustic kit enters on the Bridge lead-in snare roll (~1:34 on this audio).
+- Kit section lengths are audio-anchored so rolls sit in the correct parts of the song.
+- Tab strokes stay hit-for-hit inside each used phrase.
 """
 from __future__ import annotations
 
@@ -18,23 +18,23 @@ OUT = ROOT / "Wounded" / "notes.chart"
 
 BPM = 82.05
 RES = 480
-OFFSET = 94.415  # first lead-in snare-roll hit (audio seconds)
+BAR_SEC = 60.0 / BPM * 4
+COL_SEC = 60.0 / BPM / 4  # 16th
 
-# Section plan: (event name, tab section, bar_slice, emit_notes)
-# bar_slice None = all bars; emit_notes False = time gap only
-PLAN = [
-    ("Lead-in roll", "Transition 1", "acoustic", True),
-    ("Bridge 1", "Bridge 1", None, True),
-    ("Transition 2", "Transition 2", None, True),
-    ("Chorus 1", "Chorus 1", (0, 8), True),  # tab has 24; album cut uses one 8-bar phrase
-    ("Electronic", None, 8, False),  # digitized return between choruses/bridges
-    ("Lead-in roll 2", "Transition 4", "acoustic", True),
-    ("Bridge 2", "Bridge 2", None, True),
-    ("Chorus 2", "Chorus 2", (0, 8), True),
-    ("Transition 5", "Transition 5", None, True),
-    ("Guitar solo", "Guitar solo", None, True),
-    # Trans6/Outro overrun the album cut — omit rather than drift
-]
+# Measured against charts/Wounded/song.mp3
+ELEC_START = 17.650  # repeating verse groove locks here
+ROLL1_BAR = 93.690  # lead-in roll bar start (first hit ≈ 94.42)
+BRIDGE1 = ROLL1_BAR + BAR_SEC  # ≈ 96.615
+# After 4-bar Bridge 1 (album cut; tab writes 8)
+TRANS2 = BRIDGE1 + 4 * BAR_SEC
+CHORUS1 = TRANS2 + 8 * BAR_SEC
+# Digitized return — silent gap until second lead-in
+ROLL2_BAR = 193.850
+BRIDGE2 = ROLL2_BAR + BAR_SEC
+# Extended outro refrain (album has no second “chorus” block like the tab)
+TRANS5 = BRIDGE2 + 8 * BAR_SEC
+SOLO = TRANS5 + 8 * BAR_SEC
+OUTRO = SOLO + 8 * BAR_SEC
 
 
 def load_mod():
@@ -46,16 +46,19 @@ def load_mod():
     return mod
 
 
-def select_bars(mod, sections, name, spec):
-    bars = sections[name]
-    if spec is None:
-        return bars
-    if spec == "acoustic":
-        return [b for b in bars if mod.bar_has_acoustic_kit(b)]
-    if isinstance(spec, tuple):
-        a, b = spec
-        return bars[a:b]
-    raise ValueError(spec)
+def emit_bar(mod, notes, bar, bar_start_sec, offset, include_elec: bool):
+    for col in range(16):
+        t_sec = bar_start_sec + col * COL_SEC
+        tick = int(round((t_sec - offset) / (60.0 / BPM) * RES))
+        if tick < 0:
+            continue
+        for inst, cells in bar.items():
+            if inst == "TB":
+                continue
+            if not include_elec and inst in ("HH", "ES"):
+                continue
+            for pad, is_tom in mod.map_hit(inst, cells[col]):
+                notes.setdefault(tick, set()).add((pad, is_tom))
 
 
 def main():
@@ -63,60 +66,79 @@ def main():
     sections = dict(mod.parse_sections(TAB.read_text()))
     notes: dict[int, set[tuple[int, bool]]] = {}
     events: list[tuple[int, str]] = []
-    tick = 0
-    bar_ticks = 16 * mod.TICK_PER_COL
 
-    for ev_name, tab_name, spec, emit in PLAN:
-        events.append((tick, ev_name))
-        if not emit:
-            # spec is bar count for silent gap
-            tick += int(spec) * bar_ticks
-            continue
-        bars = select_bars(mod, sections, tab_name, spec)
-        for bar in bars:
-            insts = set(bar.keys()) - {"TB", "HH", "ES"}
-            # Always include acoustic kit voices; BD/SD/CC/CR/RC/toms
-            for col in range(16):
-                t = tick + col * mod.TICK_PER_COL
-                for inst in insts:
-                    cells = bar.get(inst)
-                    if not cells:
-                        continue
-                    for pad, is_tom in mod.map_hit(inst, cells[col]):
-                        notes.setdefault(t, set()).add((pad, is_tom))
-            tick += bar_ticks
+    # Offset 0 → chart timeline matches the song from the start
+    offset = 0.0
 
-    # Shift so first note is tick 0; OFFSET is absolute audio time of that note
-    first = min(notes)
-    notes = {t - first: v for t, v in notes.items()}
-    events = [(max(0, t - first), n) for t, n in events]
-    end_tick = tick - first
+    def add_event(t_sec: float, name: str):
+        tick = int(round((t_sec - offset) / (60.0 / BPM) * RES))
+        events.append((max(0, tick), name))
+
+    # --- Beginning: electronic groove through kit entry ---
+    # Fill ELEC_START → ROLL1_BAR with repeating Verse-1 2-bar cell (hit-for-hit).
+    groove = sections["Verse 1"][:2]
+    n_elec_bars = int(round((ROLL1_BAR - ELEC_START) / BAR_SEC))
+    add_event(ELEC_START, "Intro / Verses (electronic)")
+    # Split event labels roughly like the tab
+    third = max(1, n_elec_bars // 3)
+    for i in range(n_elec_bars):
+        t0 = ELEC_START + i * BAR_SEC
+        if i == third:
+            add_event(t0, "Verse")
+        if i == 2 * third:
+            add_event(t0, "Transition")
+        emit_bar(mod, notes, groove[i % 2], t0, offset, include_elec=True)
+
+    # --- Kit: audio-anchored phrases ---
+    plan = [
+        ("Lead-in roll", [b for b in sections["Transition 1"] if mod.bar_has_acoustic_kit(b)], ROLL1_BAR, False),
+        ("Bridge 1", sections["Bridge 1"][:4], BRIDGE1, False),
+        ("Transition 2", sections["Transition 2"], TRANS2, False),
+        ("Chorus 1", sections["Chorus 1"][:8], CHORUS1, False),
+        ("Lead-in roll 2", [b for b in sections["Transition 4"] if mod.bar_has_acoustic_kit(b)], ROLL2_BAR, False),
+        ("Bridge 2", sections["Bridge 2"], BRIDGE2, False),
+        ("Transition 5", sections["Transition 5"], TRANS5, False),
+        ("Guitar solo", sections["Guitar solo"], SOLO, False),
+        ("Outro", sections["Outro"], OUTRO, False),
+    ]
+    add_event(ROLL1_BAR + 4 * COL_SEC, "Kit enter (lead-in roll)")
+    for name, bars, t0, elec in plan:
+        add_event(t0, name)
+        for bi, bar in enumerate(bars):
+            emit_bar(mod, notes, bar, t0 + bi * BAR_SEC, offset, include_elec=elec)
+
+    if not notes:
+        raise SystemExit("no notes")
+
+    # Keep absolute timeline (Offset=0); do not shift first note to 0
+    end_tick = max(notes) + RES * 4
+    # Deduplicate events at same tick (keep last label order unique-ish)
+    events_sorted = sorted(events, key=lambda x: x[0])
 
     mod.write_chart(
         OUT,
         notes,
-        events,
+        events_sorted,
         name="Wounded",
         artist="Third Eye Blind",
         album="Blue",
         year="1999",
         genre="Alternative",
         bpm=BPM,
-        offset=OFFSET,
-        charter="Cursor Agent (hit-for-hit tab; audio-locked section lengths)",
+        offset=offset,
+        charter="Cursor Agent (full song; kit from lead-in roll; audio-anchored)",
         end_tick=end_tick,
     )
 
-    # Stats
-    pad_hits = sum(len(v) for v in notes.values())
-    last = max(notes)
-    last_s = OFFSET + last / RES * 60 / BPM
+    first_tick = min(notes)
+    first_sec = offset + first_tick / RES * 60 / BPM
+    kit_sec = ROLL1_BAR + 4 * COL_SEC
     print(f"Wrote {OUT}")
-    print(f"Offset={OFFSET} BPM={BPM}")
-    print(f"pad hits={pad_hits} last_note={last_s:.2f}s end_tick={end_tick}")
-    print("Events:")
-    for t, n in events:
-        print(f"  {OFFSET + t / RES * 60 / BPM:7.2f}s  {n}")
+    print(f"BPM={BPM} Offset={offset}")
+    print(f"first note ≈ {first_sec:.2f}s | kit lead-in hit ≈ {kit_sec:.2f}s | bridge ≈ {BRIDGE1:.2f}s")
+    print(f"pad hits={sum(len(v) for v in notes.values())}")
+    for t, n in events_sorted:
+        print(f"  {offset + t / RES * 60 / BPM:7.2f}s  {n}")
 
 
 if __name__ == "__main__":

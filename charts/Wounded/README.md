@@ -1,21 +1,17 @@
-# Wounded — Clone Hero Pro Drums (v4)
+# Wounded — Clone Hero Pro Drums (v5)
 
-Third Eye Blind — **hit-for-hit** strokes from Chris Rippin’s drum tab, with section lengths **locked to the album audio**.
+Third Eye Blind — **full song from the start**, hit-for-hit from Chris Rippin’s drum tab.
+
+## What you’ll hear/play
+1. **Beginning included** — electronic intro/verse percussion (HH → yellow, ES → snare, BD → kick) from ~0:18
+2. **Full kit enters** on the Bridge lead-in snare roll (~1:34 on this audio / Offset `0`)
+3. Kit phrases are **audio-anchored** so rolls sit in the right sections (Bridge → Trans2 → Chorus phrase → gap → Bridge 2 → outro refrain)
 
 ## Sync
-- BPM **82.05** (album ~82; half-time feel)
-- Offset **94.415s** — first note is the Bridge lead-in snare roll (~1:34)
-- Bridge downbeat ~**96.6s** (~1:37)
-- Digitized intro / verses omitted
-
-## Why v3 felt wrong
-v3 placed the roll ~1:26. On this audio the kit roll/crash fingerprint locks near **1:34**; the early offset made every roll miss.
-
-## Tab vs album
-The Rippin tab writes 24-bar “chorus” repeats and a long mid-song electronic stretch. The album cut is shorter (and has no traditional chorus). This chart keeps strokes 1:1 inside each used phrase but:
-- uses **one 8-bar phrase** per chorus section (not 24)
-- inserts an **8-bar silent gap** for the digitized return before Bridge 2
-- stops after the guitar-solo phrase (Trans6/Outro overrun the track)
+- BPM **82.05**, Offset **0** (timeline = song timeline)
+- Bridge 1 uses the album’s **4-bar** phrase (tab writes 8)
+- Chorus phrases are **8 bars** (tab writes 24)
+- After Bridge 2: Transition 5 → Solo → Outro (extended refrain)
 
 ## Install
 Copy the `Wounded` folder into Clone Hero `Songs` → rescan → Pro Drums.

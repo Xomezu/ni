@@ -1,6 +1,6 @@
 {
-  "name": "NieR:Automata OBS Overlay Suite",
-  "description": "An authentic NieR:Automata streaming overlay suite with animated stream starting sequence, gameplay HUD, BRB, ending screen, audio beeps, glitch FX, and OBS browser source integration.",
+  "name": "Lane Peek",
+  "description": "Lightweight Clone Hero chart viewer with synced audio playback. Drop notes.chart and song audio to preview the highway without launching Clone Hero.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

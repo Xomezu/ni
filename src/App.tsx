@@ -1,287 +1,524 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createDemoAudioUrl } from './chart/demoAudio';
+import { formatDuration, parseChart } from './chart/parseChart';
+import { loadBundleFromFiles, type LoadedAudio } from './chart/loadBundle';
+import { SAMPLE_CHART_TEXT, SAMPLE_INI } from './chart/sampleChart';
+import { parseSongIni, mergeMeta } from './chart/parseSongIni';
+import { secondsToTick, tickToSeconds } from './chart/timeMap';
 import {
-  SceneType,
-  StreamerConfig,
-  StreamAlert,
-  ChatMessage,
-  ThemeMode,
-} from './types';
-import { NierBackground } from './components/common/NierBackground';
-import { ScanlineOverlay } from './components/common/ScanlineOverlay';
-import { AlertBanner } from './components/common/AlertBanner';
-import { StreamStartingScene } from './components/scenes/StreamStartingScene';
-import { GameplayScene } from './components/scenes/GameplayScene';
-import { BeRightBackScene } from './components/scenes/BeRightBackScene';
-import { StreamEndingScene } from './components/scenes/StreamEndingScene';
-import { IntermissionScene } from './components/scenes/IntermissionScene';
-import { ControlDock } from './components/controls/ControlDock';
-import { SoundEngine } from './utils/audio';
-import {
-  LiveAlertsManager,
-  getSavedIntegrations,
-} from './utils/streamIntegrations';
-import {
-  broadcastSceneChange,
-  broadcastConfigChange,
-  broadcastAlert,
-  subscribeToRemoteControl,
-} from './utils/remoteControlSync';
+  DIFFICULTIES,
+  INSTRUMENTS,
+  instrumentLabel,
+  type Difficulty,
+  type InstrumentCode,
+} from './chart/tracks';
+import type { InstrumentTrack, SongBundle } from './chart/types';
+import { DropZone } from './components/DropZone';
+import { Highway } from './components/Highway';
+import { Transport } from './components/Transport';
 
-const INITIAL_CONFIG: StreamerConfig = {
-  streamerName: '2B // YoRHa Recon',
-  titleSuffix: 'NieR:Automata Master Run',
-  podDesignation: 'POD 042',
-  serialNumber: 'YoRHa No.2 Type B',
-  gameTitle: 'NieR:Automata [Game of the YoRHa Edition]',
-  socials: {
-    twitch: 'twitch.tv/yorha_unit2b',
-    twitter: '@yorha_recon',
-    youtube: 'youtube.com/@yorha_broadcast',
-    discord: 'discord.gg/bunker',
-  },
-  startingCountdownSeconds: 300, // 5:00
-  brbEstimatedMinutes: 3,
-  goal: {
-    title: 'SUB GOAL',
-    current: 442,
-    target: 500,
-    unit: 'Commanders',
-  },
-  theme: 'parchment',
-  glitchIntensity: 'moderate',
-  soundEnabled: true,
-  volume: 0.35,
-  podVoiceEnabled: true,
-  scanlinesEnabled: true,
-  particlesEnabled: true,
-  customStatusMessage: 'BLACK BOX INTEGRITY: 100% // BUNKER SYNC OK',
-  nowPlaying: {
-    title: 'City Ruins (Rays of Light)',
-    artist: 'Keiichi Okabe // NieR:Automata OST',
-    album: 'NieR:Automata Original Soundtrack',
-    isPlaying: true,
-  },
-};
+function pickDefaultTrack(tracks: InstrumentTrack[]): InstrumentTrack | null {
+  if (tracks.length === 0) return null;
+  return (
+    tracks.find((t) => t.difficulty === 'Expert' && t.instrument === 'Single') ||
+    tracks.find((t) => t.difficulty === 'Expert') ||
+    tracks[tracks.length - 1]
+  );
+}
 
-const INITIAL_CHAT: ChatMessage[] = [
-  {
-    id: '1',
-    user: 'Operator_6O',
-    message: 'To 2B! Bunker satellite connection is clear today. Have a safe mission!',
-    role: 'mod',
-    timestamp: '19:42',
-  },
-  {
-    id: '2',
-    user: '9S_Scanner',
-    message: 'I have verified the area scan. Pod 042 is linked with full laser capabilities.',
-    role: 'sub',
-    timestamp: '19:43',
-  },
-  {
-    id: '3',
-    user: 'Pascal_Village',
-    message: 'Welcome everyone! Let us enjoy a peaceful broadcast together.',
-    role: 'vip',
-    timestamp: '19:44',
-  },
-  {
-    id: '4',
-    user: 'Emil_Specialist',
-    message: 'I brought high-grade restorative items if anyone needs them!',
-    role: 'viewer',
-    timestamp: '19:45',
-  },
-];
+function buildDemoBundle(): SongBundle {
+  const chart = parseChart(SAMPLE_CHART_TEXT, 'practice-lane.chart');
+  const iniMeta = parseSongIni(SAMPLE_INI);
+  return {
+    chart: { ...chart, meta: mergeMeta(chart.meta, iniMeta) },
+    iniMeta,
+  };
+}
 
 export default function App() {
-  const [config, setConfig] = useState<StreamerConfig>(INITIAL_CONFIG);
-  const [currentScene, setCurrentScene] = useState<SceneType>('starting');
-  const [activeAlert, setActiveAlert] = useState<StreamAlert | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT);
-  const [cleanMode, setCleanMode] = useState(false);
+  const [bundle, setBundle] = useState<SongBundle>(() => buildDemoBundle());
+  const [audio, setAudio] = useState<LoadedAudio | null>(null);
+  const [demoReady, setDemoReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty>('Expert');
+  const [instrument, setInstrument] = useState<InstrumentCode>('Single');
+  const [playing, setPlaying] = useState(false);
+  const [currentSec, setCurrentSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(0);
+  const [volume, setVolume] = useState(0.85);
+  const [muted, setMuted] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [zoom, setZoom] = useState(1);
 
-  // Check URL parameters for OBS Browser Source direct loading
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCleanupRef = useRef<(() => void) | null>(null);
+  const artCleanupRef = useRef<string | null>(null);
+  const rafRef = useRef(0);
+
+  const chart = bundle.chart;
+
+  const available = useMemo(() => {
+    const diffs = new Set(chart.tracks.map((t) => t.difficulty));
+    const insts = new Set(chart.tracks.map((t) => t.instrument));
+    return {
+      difficulties: DIFFICULTIES.filter((d) => diffs.has(d)),
+      instruments: INSTRUMENTS.filter((i) => insts.has(i.code)),
+    };
+  }, [chart.tracks]);
+
+  const track = useMemo(() => {
+    return (
+      chart.tracks.find((t) => t.difficulty === difficulty && t.instrument === instrument) ||
+      pickDefaultTrack(chart.tracks)
+    );
+  }, [chart.tracks, difficulty, instrument]);
+
+  const maxTick = track?.maxTick ?? 0;
+  const chartDuration = tickToSeconds(maxTick, chart.tempos, chart.meta.resolution, 0);
+  const effectiveDuration = Math.max(durationSec, chartDuration);
+
+  const currentTick = secondsToTick(
+    currentSec,
+    chart.tempos,
+    chart.meta.resolution,
+    chart.meta.offset,
+  );
+
+  const visibleTicks = Math.round((chart.meta.resolution * 8) / zoom);
+
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const sceneParam = params.get('scene') as SceneType;
-    if (sceneParam && ['starting', 'gameplay', 'brb', 'ending', 'intermission'].includes(sceneParam)) {
-      setCurrentScene(sceneParam);
-    }
-    if (params.get('clean') === 'true' || params.get('obs') === 'true') {
-      setCleanMode(true);
-    }
-    const themeParam = params.get('theme') as ThemeMode;
-    if (themeParam && ['parchment', 'yorha-dark', 'corrupted-red', 'resistance-sand'].includes(themeParam)) {
-      setConfig((prev) => ({ ...prev, theme: themeParam }));
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const demo = await createDemoAudioUrl();
+        if (cancelled) {
+          demo.revoke();
+          return;
+        }
+        setAudio({ url: demo.url, name: 'demo-bed.wav', revoke: demo.revoke });
+        setDemoReady(true);
+      } catch {
+        setDemoReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Connect live stream events (Twitch chat, Streamlabs, StreamElements)
   useEffect(() => {
-    const manager = LiveAlertsManager.getInstance();
-    const saved = getSavedIntegrations();
-    manager.initFromConfig(saved);
+    const el = audioRef.current;
+    if (!el || !audio) {
+      setDurationSec(0);
+      return;
+    }
 
-    const unsubAlert = manager.onAlert((alert) => {
-      setActiveAlert(alert);
-    });
+    el.src = audio.url;
+    el.volume = muted ? 0 : volume;
+    el.playbackRate = speed;
 
-    const unsubChat = manager.onChatMessage((msg) => {
-      setChatMessages((prev) => [...prev.slice(-40), msg]);
-    });
+    const onLoaded = () => setDurationSec(el.duration || 0);
+    const onEnded = () => setPlaying(false);
+    el.addEventListener('loadedmetadata', onLoaded);
+    el.addEventListener('ended', onEnded);
+    el.load();
 
     return () => {
-      unsubAlert();
-      unsubChat();
+      el.removeEventListener('loadedmetadata', onLoaded);
+      el.removeEventListener('ended', onEnded);
+      el.pause();
     };
+  }, [audio]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.volume = muted ? 0 : volume;
+  }, [volume, muted]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.playbackRate = speed;
+  }, [speed]);
+
+  useEffect(() => {
+    const tick = () => {
+      const el = audioRef.current;
+      if (el && !el.paused) {
+        setCurrentSec(el.currentTime);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  // Synchronize scene changes, alerts, and configs across windows/tabs/popups
   useEffect(() => {
-    const unsub = subscribeToRemoteControl({
-      onSceneChange: (newScene) => {
-        setCurrentScene(newScene);
-      },
-      onConfigChange: (delta) => {
-        setConfig((prev) => ({ ...prev, ...delta }));
-      },
-      onAlertTrigger: (alert) => {
-        setActiveAlert(alert);
-      },
-    });
-    return unsub;
+    const preferred = pickDefaultTrack(chart.tracks);
+    if (!preferred) return;
+    const hasCurrent = chart.tracks.some(
+      (t) => t.difficulty === difficulty && t.instrument === instrument,
+    );
+    if (!hasCurrent) {
+      setDifficulty(preferred.difficulty as Difficulty);
+      setInstrument(preferred.instrument as InstrumentCode);
+    }
+  }, [chart, difficulty, instrument]);
+
+  const cleanupMedia = useCallback(() => {
+    audioCleanupRef.current?.();
+    audioCleanupRef.current = null;
+    if (artCleanupRef.current) {
+      URL.revokeObjectURL(artCleanupRef.current);
+      artCleanupRef.current = null;
+    }
   }, []);
 
-  // Keyboard shortcut listener for streamers
+  const handleFiles = useCallback(
+    async (files: File[]) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const { bundle: next, audio: nextAudio } = await loadBundleFromFiles(files);
+        cleanupMedia();
+        if (next.albumArtUrl) artCleanupRef.current = next.albumArtUrl;
+        if (nextAudio) audioCleanupRef.current = nextAudio.revoke;
+
+        setBundle(next);
+        setAudio(nextAudio);
+        setPlaying(false);
+        setCurrentSec(0);
+
+        const preferred = pickDefaultTrack(next.chart.tracks);
+        if (preferred) {
+          setDifficulty(preferred.difficulty as Difficulty);
+          setInstrument(preferred.instrument as InstrumentCode);
+        }
+
+        if (!nextAudio) {
+          setError(
+            'Chart loaded, but no audio file was found. Drop song.ogg (or stems) with the chart.',
+          );
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not load chart.');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [cleanupMedia],
+  );
+
+  const loadDemo = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      cleanupMedia();
+      setBundle(buildDemoBundle());
+      const demo = await createDemoAudioUrl();
+      audioCleanupRef.current = demo.revoke;
+      setAudio({ url: demo.url, name: 'demo-bed.wav', revoke: demo.revoke });
+      setPlaying(false);
+      setCurrentSec(0);
+      setDifficulty('Expert');
+      setInstrument('Single');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Demo failed to load.');
+    } finally {
+      setBusy(false);
+    }
+  }, [cleanupMedia]);
+
+  const togglePlay = useCallback(async () => {
+    const el = audioRef.current;
+    if (!el || !audio) return;
+    if (el.paused) {
+      try {
+        await el.play();
+        setPlaying(true);
+      } catch {
+        setError('Audio playback was blocked. Click play again after interacting with the page.');
+      }
+    } else {
+      el.pause();
+      setPlaying(false);
+    }
+  }, [audio]);
+
+  const seek = useCallback((sec: number) => {
+    const el = audioRef.current;
+    const clamped = Math.max(0, sec);
+    if (el) el.currentTime = clamped;
+    setCurrentSec(clamped);
+  }, []);
+
+  const restart = useCallback(() => {
+    seek(0);
+  }, [seek]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in an input
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
-        return;
-      }
-
-      if (e.key === '1') {
-        setCurrentScene('starting');
-        broadcastSceneChange('starting');
-        if (config.soundEnabled) SoundEngine.playConfirm(config.volume);
-      } else if (e.key === '2') {
-        setCurrentScene('gameplay');
-        broadcastSceneChange('gameplay');
-        if (config.soundEnabled) SoundEngine.playConfirm(config.volume);
-      } else if (e.key === '3') {
-        setCurrentScene('brb');
-        broadcastSceneChange('brb');
-        if (config.soundEnabled) SoundEngine.playConfirm(config.volume);
-      } else if (e.key === '4') {
-        setCurrentScene('ending');
-        broadcastSceneChange('ending');
-        if (config.soundEnabled) SoundEngine.playConfirm(config.volume);
-      } else if (e.key === '5') {
-        setCurrentScene('intermission');
-        broadcastSceneChange('intermission');
-        if (config.soundEnabled) SoundEngine.playConfirm(config.volume);
-      } else if (e.key.toLowerCase() === 'h') {
-        setCleanMode((prev) => !prev);
-      } else if (e.key.toLowerCase() === 'g') {
-        if (config.soundEnabled) SoundEngine.playGlitch(config.volume);
+    const onKey = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        void togglePlay();
+      } else if (e.key === 'ArrowRight') {
+        seek(currentSec + (e.shiftKey ? 5 : 1));
+      } else if (e.key === 'ArrowLeft') {
+        seek(Math.max(0, currentSec - (e.shiftKey ? 5 : 1)));
+      } else if (e.key === '[' || e.key === '-') {
+        setZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))));
+      } else if (e.key === ']' || e.key === '=' || e.key === '+') {
+        setZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))));
       }
     };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [togglePlay, seek, currentSec]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [config.soundEnabled, config.volume]);
-
-  const handleSelectScene = (scene: SceneType) => {
-    setCurrentScene(scene);
-    broadcastSceneChange(scene);
-  };
-
-  const handleUpdateConfig = (newConfig: Partial<StreamerConfig>) => {
-    setConfig((prev) => ({ ...prev, ...newConfig }));
-    broadcastConfigChange(newConfig);
-  };
-
-  const handleSendMessage = (text: string) => {
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      user: config.streamerName.split(' ')[0] || 'Operator',
-      message: text,
-      role: 'mod',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setChatMessages((prev) => [...prev, newMsg]);
-  };
-
-  const handleTriggerAlert = (alert: StreamAlert) => {
-    setActiveAlert(alert);
-    broadcastAlert(alert);
-  };
+  const noteCount = track?.noteCount ?? 0;
+  const bpmNow = useMemo(() => {
+    let bpm = chart.tempos[0]?.bpm ?? 120;
+    for (const t of chart.tempos) {
+      if (t.tick <= currentTick) bpm = t.bpm;
+      else break;
+    }
+    return bpm;
+  }, [chart.tempos, currentTick]);
 
   return (
-    <div className="relative min-h-screen w-full bg-[#0c0c0c] text-[#BAB5A1] select-none overflow-x-hidden font-mono">
-      {/* Dynamic Background Atmosphere */}
-      <NierBackground theme={config.theme} particles={config.particlesEnabled} />
+    <div className="app-shell relative min-h-screen text-[var(--ink)]">
+      <div className="pointer-events-none absolute inset-0 app-atmosphere" aria-hidden />
 
-      {/* CRT Scanline & Glitch Distortion Layer */}
-      <ScanlineOverlay
-        enabled={config.scanlinesEnabled}
-        intensity={config.glitchIntensity}
-      />
+      <audio ref={audioRef} preload="auto" />
 
-      {/* Live YoRHa Alert Popup Banner */}
-      <AlertBanner
-        currentAlert={activeAlert}
-        onDismiss={() => setActiveAlert(null)}
-        soundEnabled={config.soundEnabled}
-      />
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
+              Clone Hero chart peek
+            </p>
+            <h1 className="font-[family-name:var(--font-display)] text-4xl leading-none tracking-tight sm:text-5xl">
+              Lane Peek
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-[var(--muted)]">
+              See the highway and hear the track — no Clone Hero install required.
+            </p>
+          </div>
+          <DropZone onFiles={handleFiles} busy={busy} compact />
+        </header>
 
-      {/* Active OBS Scene Rendering */}
-      <main className="relative z-10 w-full min-h-screen">
-        {currentScene === 'starting' && (
-          <StreamStartingScene
-            config={config}
-            onUpdateConfig={handleUpdateConfig}
-          />
+        {!demoReady && (
+          <p className="mt-4 text-sm text-[var(--muted)]">Warming up demo audio…</p>
         )}
-        {currentScene === 'gameplay' && (
-          <GameplayScene
-            config={config}
-            chatMessages={chatMessages}
-            onSendMessage={handleSendMessage}
-          />
-        )}
-        {currentScene === 'brb' && (
-          <BeRightBackScene config={config} />
-        )}
-        {currentScene === 'ending' && (
-          <StreamEndingScene config={config} />
-        )}
-        {currentScene === 'intermission' && (
-          <IntermissionScene
-            config={config}
-            chatMessages={chatMessages}
-            onSendMessage={handleSendMessage}
-          />
-        )}
-      </main>
 
-      {/* Streamer Control Dock & OBS Link Generator */}
-      <ControlDock
-        currentScene={currentScene}
-        onSelectScene={handleSelectScene}
-        config={config}
-        onUpdateConfig={handleUpdateConfig}
-        onTriggerAlert={handleTriggerAlert}
-        cleanMode={cleanMode}
-        onToggleCleanMode={() => setCleanMode(!cleanMode)}
-      />
+        {error && (
+          <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6 grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="flex min-h-[560px] flex-col gap-3">
+            <div className="highway-frame relative min-h-[480px] flex-1 overflow-hidden rounded-2xl border border-[var(--line)] shadow-[0_20px_60px_rgba(15,23,32,0.18)]">
+              {track ? (
+                <Highway
+                  chart={chart}
+                  track={track}
+                  currentTick={currentTick}
+                  visibleTicks={visibleTicks}
+                  className="absolute inset-0"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center bg-[#121820] text-sm text-slate-300">
+                  No notes for this difficulty / instrument.
+                </div>
+              )}
+              <div className="pointer-events-none absolute left-4 top-4 rounded-md bg-black/45 px-2 py-1 font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-wider text-white/90 backdrop-blur">
+                {difficulty} · {instrumentLabel(instrument)} · {Math.round(bpmNow)} BPM
+              </div>
+            </div>
+
+            <Transport
+              playing={playing}
+              currentSec={currentSec}
+              durationSec={effectiveDuration}
+              volume={volume}
+              muted={muted}
+              audioLabel={audio?.name}
+              onTogglePlay={() => void togglePlay()}
+              onSeek={seek}
+              onRestart={restart}
+              onVolume={(v) => {
+                setVolume(v);
+                if (v > 0) setMuted(false);
+              }}
+              onToggleMute={() => setMuted((m) => !m)}
+            />
+          </section>
+
+          <aside className="relative z-20 flex flex-col gap-4">
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper)]/90 p-4 backdrop-blur">
+              <div className="flex gap-3">
+                {bundle.albumArtUrl ? (
+                  <img
+                    src={bundle.albumArtUrl}
+                    alt=""
+                    className="h-20 w-20 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--paper-2)] font-[family-name:var(--font-display)] text-2xl text-[var(--muted)]">
+                    LP
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h2 className="truncate font-[family-name:var(--font-display)] text-xl leading-tight">
+                    {chart.meta.name}
+                  </h2>
+                  <p className="truncate text-sm text-[var(--muted)]">{chart.meta.artist}</p>
+                  {chart.meta.album && (
+                    <p className="truncate text-xs text-[var(--muted)]">{chart.meta.album}</p>
+                  )}
+                </div>
+              </div>
+
+              <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                <div>
+                  <dt className="text-[var(--muted)]">Charter</dt>
+                  <dd>{chart.meta.charter || '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-[var(--muted)]">Length</dt>
+                  <dd className="font-[family-name:var(--font-mono)]">
+                    {formatDuration(effectiveDuration)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[var(--muted)]">Notes</dt>
+                  <dd className="font-[family-name:var(--font-mono)]">{noteCount}</dd>
+                </div>
+                <div>
+                  <dt className="text-[var(--muted)]">Source</dt>
+                  <dd className="truncate">{chart.sourceName}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper)]/90 p-4 backdrop-blur">
+              <label className="block text-xs uppercase tracking-wider text-[var(--muted)]">
+                Difficulty
+              </label>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {available.difficulties.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    className={`rounded-md px-2.5 py-1 text-sm transition ${
+                      difficulty === d
+                        ? 'bg-[var(--ink)] text-[var(--paper)]'
+                        : 'bg-[var(--paper-2)] text-[var(--ink)] hover:bg-[var(--line)]'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+
+              <label className="mt-4 block text-xs uppercase tracking-wider text-[var(--muted)]">
+                Instrument
+              </label>
+              <select
+                value={instrument}
+                onChange={(e) => setInstrument(e.target.value as InstrumentCode)}
+                className="mt-2 w-full rounded-md border border-[var(--line)] bg-[var(--paper-2)] px-2 py-2 text-sm"
+              >
+                {available.instruments.map((i) => (
+                  <option key={i.code} value={i.code}>
+                    {i.label}
+                  </option>
+                ))}
+              </select>
+
+              <label className="mt-4 block text-xs uppercase tracking-wider text-[var(--muted)]">
+                Highway zoom
+              </label>
+              <input
+                type="range"
+                min={0.5}
+                max={3}
+                step={0.25}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="mt-2 w-full"
+              />
+
+              <label className="mt-4 block text-xs uppercase tracking-wider text-[var(--muted)]">
+                Playback speed
+              </label>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[0.5, 0.75, 1, 1.25].map((rate) => (
+                  <button
+                    key={rate}
+                    type="button"
+                    onClick={() => setSpeed(rate)}
+                    className={`rounded-md px-2.5 py-1 font-[family-name:var(--font-mono)] text-sm transition ${
+                      speed === rate
+                        ? 'bg-[var(--ink)] text-[var(--paper)]'
+                        : 'bg-[var(--paper-2)] text-[var(--ink)] hover:bg-[var(--line)]'
+                    }`}
+                  >
+                    {rate}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper)]/90 p-4 text-sm text-[var(--muted)] backdrop-blur">
+              <p className="font-[family-name:var(--font-display)] text-base text-[var(--ink)]">
+                Sections
+              </p>
+              <ul className="mt-2 max-h-40 space-y-1 overflow-auto font-[family-name:var(--font-mono)] text-xs">
+                {chart.sections.length === 0 && <li>—</li>}
+                {chart.sections.map((s) => (
+                  <li key={`${s.tick}-${s.name}`}>
+                    <button
+                      type="button"
+                      className="text-left hover:text-[var(--ink)]"
+                      onClick={() =>
+                        seek(
+                          tickToSeconds(
+                            s.tick,
+                            chart.tempos,
+                            chart.meta.resolution,
+                            chart.meta.offset,
+                          ),
+                        )
+                      }
+                    >
+                      {s.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => void loadDemo()}
+                className="mt-4 w-full rounded-md border border-[var(--line)] px-3 py-2 text-[var(--ink)] transition hover:bg-[var(--paper-2)]"
+              >
+                Reload demo song
+              </button>
+              <p className="mt-3 text-[11px] leading-relaxed">
+                Space play/pause · ←/→ seek · [ ] zoom
+              </p>
+            </div>
+
+            {!audio && <DropZone onFiles={handleFiles} busy={busy} />}
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }

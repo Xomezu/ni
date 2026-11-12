@@ -29,12 +29,12 @@ BRIDGE1 = ROLL1_BAR + BAR_SEC  # ≈ 96.615
 TRANS2 = BRIDGE1 + 4 * BAR_SEC
 CHORUS1 = TRANS2 + 8 * BAR_SEC
 # Digitized return — silent gap until second lead-in
-ROLL2_BAR = 193.850
-BRIDGE2 = ROLL2_BAR + BAR_SEC
-# Extended outro refrain (album has no second “chorus” block like the tab)
-TRANS5 = BRIDGE2 + 8 * BAR_SEC
-SOLO = TRANS5 + 8 * BAR_SEC
-OUTRO = SOLO + 8 * BAR_SEC
+ROLL2_BAR = 195.130
+BRIDGE2 = 196.055
+# Extended outro refrain (audio-refined; skip tab “Chorus 2”)
+TRANS5 = 216.900
+SOLO = 238.496
+OUTRO = 260.441
 
 
 def load_mod():

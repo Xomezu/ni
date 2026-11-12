@@ -1,14 +1,11 @@
 # Heart Don't Stand a Chance — Clone Hero Pro Drums
 
-**Audio is not included** (can't redistribute the commercial track).
+**Audio included** as `song.mp3` (your upload).
 
-## Add audio (required to play)
-1. Get a copy you own (CD / purchase / personal rip).
-2. Rename it to `song.mp3` and put it in this folder next to `notes.chart`.
-3. Copy the whole folder into Clone Hero `Songs` → rescan → Pro Drums.
-4. If notes feel early/late, nudge **Offset** in Moonscraper.
-
-Or upload `song.mp3` in chat and I’ll rebuild the zip with audio baked in.
+## Install
+1. Copy this folder into Clone Hero `Songs`
+2. Rescan → Pro Drums
+3. If notes feel early/late, nudge **Offset** in Moonscraper (BPM is 94).
 
 ## Source
 Drum patterns adapted from Kelvin Andreas's publicly shared transcription (2021), ~94 BPM.

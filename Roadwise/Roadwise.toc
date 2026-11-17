@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: Roadwise
+## Notes: Routes you to an NPC along surveyed roads instead of a straight line through a mountain.
+## Version: 1.0.0
+## SavedVariables: RoadwiseDB
+## IconTexture: Interface\Icons\INV_Misc_Map_01
+## Category-enUS: Map
+## Category: Map
+## AllowLoadGameType: forever
+
+Graph.lua
+Data/Roads.lua
+Data/NPCs.lua
+Guide.lua
+Arrow.lua
+WorldMap.lua
+Commands.lua
+Init.lua

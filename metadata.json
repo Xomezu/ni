@@ -1,6 +1,6 @@
 {
-  "name": "NieR:Automata OBS Overlay Suite",
-  "description": "An authentic NieR:Automata streaming overlay suite with animated stream starting sequence, gameplay HUD, BRB, ending screen, audio beeps, glitch FX, and OBS browser source integration.",
+  "name": "Cue",
+  "description": "Listens for a short audio cue and presses a button when it hears it.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

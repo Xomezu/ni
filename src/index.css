@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+#cue-target-button[data-pressed='true'] {
+  background: #e39b2b !important;
+  border-color: #e39b2b !important;
+  transform: translateY(18px) scale(0.96) !important;
+  box-shadow: 0 0 0 8px rgba(227, 155, 43, 0.45) !important;
+}
+
 @layer base {
   :root {
     --nier-beige: #BAB5A1;
